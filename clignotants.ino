@@ -8,18 +8,23 @@
 **************************************************************************/
 
 // STRIP PINOUT
-#define PIN_ARR_D 4  
+#define PIN_RIGHT 4  
 #define PIN_FRONT 7  
-#define PIN_ARR_G 6  
+#define PIN_LEFT 6  
 
 // BUTTONS PINOUT
 #define PIN_AVA_BUT 9  
+#define PIN_WRN_BUT 10  
 #define PIN_ARR_BUT 12  
 #define PIN_GAU_BUT 13  
 #define PIN_DRO_BUT 14  
-#define PIN_WRN_BUT 10  
 #define PIN_GAY_BUT 18  
 #define PIN_RED_BUT 19  
+
+
+#define PIN_LED_R 15  
+#define PIN_LED_L 16  
+#define PIN_RELAY 17  
 
 
 #define NUM_PIX_FRONT 40
@@ -28,11 +33,16 @@
 #define SHORT_DELAY 10
 #define LONG_DELAY 250
 
-Adafruit_NeoPixel strip_arr_g(NUM_PIX_BACK, PIN_ARR_G, NEO_RGBW + NEO_KHZ800);
-Adafruit_NeoPixel strip_arr_d(NUM_PIX_BACK, PIN_ARR_D, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel strip_left(NUM_PIX_BACK, PIN_LEFT, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel strip_right(NUM_PIX_BACK, PIN_RIGHT, NEO_RGBW + NEO_KHZ800);
 Adafruit_NeoPixel strip_front(NUM_PIX_FRONT,PIN_FRONT, NEO_RGBW + NEO_KHZ800);
 
 int buttonState = 0;
+int status_front_light = 0;
+int status_back_light = 0;
+int status_left_light = 0;
+int status_right_light = 0;
+int status_warn_light = 0;
 
 /**************************************************************************
  * S E T U P
@@ -41,6 +51,10 @@ void setup() {
 
   Serial.begin(9600);
 
+  pinMode(PIN_RELAY, OUTPUT);
+  pinMode(PIN_LED_R, OUTPUT);
+  pinMode(PIN_LED_L, OUTPUT);
+  
   pinMode(PIN_AVA_BUT, INPUT_PULLUP);
   pinMode(PIN_ARR_BUT, INPUT_PULLUP);
   pinMode(PIN_GAU_BUT, INPUT_PULLUP);
@@ -50,12 +64,12 @@ void setup() {
   pinMode(PIN_RED_BUT, INPUT_PULLUP);
 
   strip_front.begin();
-  strip_arr_g.begin();
-  strip_arr_d.begin();
+  strip_left.begin();
+  strip_right.begin();
 
   strip_front.clear();
-  strip_arr_g.clear();
-  strip_arr_d.clear();
+  strip_left.clear();
+  strip_right.clear();
 }
 
 /**************************************************************************
@@ -63,106 +77,179 @@ void setup() {
 **************************************************************************/
 void loop() {
 
-  // Serial.println("Loop... ");
+  if (status_left_light) {
+    // clignot_left();
+    Serial.println("LEFT IS STILL ON ! ");
+    delay(LONG_DELAY);      
+  }
+
+  if (status_right_light) {
+    // clignot_right();
+    Serial.println("RIGHT IS STILL ON ! ");
+    delay(LONG_DELAY);      
+  }
+
+  // F R O N T 
   buttonState = digitalRead(PIN_AVA_BUT);
   if (buttonState == LOW) {
-    Serial.println("FRONT PRESSED ! ");
-    clignot_arr_d();
+
+    if (status_front_light) {
+      Serial.println("FRONT PRESSED: OFF ! ");
+      status_front_light = false;
+      front_light(status_front_light);
+    } else {
+      Serial.println("FRONT PRESSED: ON ! ");
+      status_front_light = true;
+      front_light(status_front_light);
+    }
   }
+  
+  // B A C K 
   buttonState = digitalRead(PIN_ARR_BUT);
   if (buttonState == LOW) {
-    Serial.println("BACK PRESSED ! ");
-    clignot_arr_d();
+    if (status_back_light) {
+      Serial.println("BACK PRESSED: OFF ! ");
+      status_back_light = false;
+      back_light(status_back_light);
+    } else {
+      Serial.println("BACK PRESSED: ON ! ");
+      status_back_light = true;
+      back_light(status_back_light);
+    }
+
   }
+
+  // L E F T 
   buttonState = digitalRead(PIN_GAU_BUT);
   if (buttonState == LOW) {
-    Serial.println("LEFT PRESSED ! ");
-    clignot_arr_g();
+    if (status_left_light) {
+      Serial.println("LEFT PRESSED: OFF ! ");
+      status_left_light = false;
+    } else {
+      Serial.println("LEFT PRESSED: ON ! ");
+      status_left_light = true;
+    }
+
   }
+
+  // R I G H T
   buttonState = digitalRead(PIN_DRO_BUT);
   if (buttonState == LOW) {
-    Serial.println("RIGHT PRESSED ! ");
-    clignot_arr_d();
+    if (status_right_light) {
+    Serial.println("RIGHT PRESSED: OFF ! ");
+      status_right_light = false;
+    } else {
+    Serial.println("RIGHT PRESSED: ON ! ");
+      status_right_light = true;
+    }
   }
+
+  // W A R N 
   buttonState = digitalRead(PIN_WRN_BUT);
   if (buttonState == LOW) {
     Serial.println("WARN PRESSED ! ");
-    clignot_arr_d();
+    clignot_warn();
   }
+
+  // G A Y 
   buttonState = digitalRead(PIN_GAY_BUT);
   if (buttonState == LOW) {
     Serial.println("GAY PRESSED ! ");
-    clignot_arr_d();
+    clignot_right();
   }
+
+  // R E D
   buttonState = digitalRead(PIN_RED_BUT);
   if (buttonState == LOW) {
     Serial.println("RED PRESSED ! ");
-    clignot_arr_d();
+    theaterChase(strip_front.Color(0, 255,0), 2);
+    theaterChase(strip_front.Color(0, 0, 255), 2);
+    theaterChase(strip_front.Color(0, 255,0), 2);
+    theaterChase(strip_front.Color(0, 0, 255), 2);
   }
 
-  delay(100);
 }
 /**************************************************************************
- * W I P E    F R O N T
+ * B L I N K    R I G H T
 **************************************************************************/
-void colorWipe_f(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip_arr_g.numPixels(); i++) {
-    strip_front.setPixelColor(i, c);
+void clignot_right() {
+  digitalWrite(PIN_RELAY, HIGH);
+  digitalWrite(PIN_LED_R, HIGH);
+  for (int pixel = 0; pixel < NUM_PIX_BACK; pixel++) {
+    strip_right.setPixelColor(pixel, strip_right.Color(65, 255, 3)); 
+    strip_right.show();
+    int pixel_f = NUM_PIX_BACK - pixel;
+    strip_front.setPixelColor(pixel_f, strip_front.Color(65, 255, 3)); 
     strip_front.show();
-    delay(wait);
-  }
-}
-
-/**************************************************************************
- * W I P E    B A C K - R I G H T
-**************************************************************************/
-void colorWipe_d(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip_arr_g.numPixels(); i++) {
-    strip_arr_d.setPixelColor(i, c);
-    strip_arr_d.show();
-    delay(wait);
-  }
-}
-
-/**************************************************************************
- * W I P E    B A C K - L E F T
-**************************************************************************/
-void colorWipe_g(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip_arr_g.numPixels(); i++) {
-    strip_arr_g.setPixelColor(i, c);
-    strip_arr_g.show();
-    delay(wait);
-  }
-}
-/**************************************************************************
- * B L I N K    B A C K - R I G H T
-**************************************************************************/
-void clignot_arr_d() {
-  for (int pixel = 0; pixel < NUM_PIX_BACK; pixel++) {
-    strip_arr_d.setPixelColor(pixel, strip_arr_d.Color(65, 255, 3)); 
-    strip_arr_d.show();
     delay(SHORT_DELAY);      
   }
   delay(LONG_DELAY);      
-  colorWipe_d(strip_arr_d.Color(0, 0, 0), 0); // White RGBW
+  strip_right.fill(strip_front.Color(0, 0, 0, 0));
+  strip_right.show();
+  strip_front.fill(strip_front.Color(0, 0, 0, 0));
+  strip_front.show();
+  digitalWrite(PIN_RELAY, LOW);
+  digitalWrite(PIN_LED_R, LOW);
 }
 /**************************************************************************
- * B L I N K    B A C K - L E F T
+ * B L I N K    L E F T
 **************************************************************************/
-void clignot_arr_g() {
+void clignot_left() {
+  digitalWrite(PIN_RELAY, HIGH);
+  digitalWrite(PIN_LED_L, HIGH);
   for (int pixel = 0; pixel < NUM_PIX_BACK; pixel++) {
-    strip_arr_g.setPixelColor(pixel, strip_arr_g.Color(65, 255, 3)); 
-    strip_arr_g.show();
+    strip_left.setPixelColor(pixel, strip_left.Color(65, 255, 3)); 
+    strip_left.show();
+    int pixel_f = NUM_PIX_BACK + pixel;
+    strip_front.setPixelColor(pixel_f, strip_front.Color(65, 255, 3)); 
+    strip_front.show();
     delay(SHORT_DELAY);      
   }
   delay(LONG_DELAY);      
-  colorWipe_g(strip_arr_g.Color(0, 0, 0), 0); // White RGBW
+  strip_left.fill(strip_front.Color(0, 0, 0, 0));
+  strip_left.show();
+  strip_front.fill(strip_front.Color(0, 0, 0, 0));
+  strip_front.show();
+
+  digitalWrite(PIN_RELAY, LOW);
+  digitalWrite(PIN_LED_L, LOW);
+}
+/**************************************************************************
+ * B L I N K    W A R N
+**************************************************************************/
+void clignot_warn() {
+  digitalWrite(PIN_RELAY, HIGH);
+  digitalWrite(PIN_LED_L, HIGH);
+  digitalWrite(PIN_LED_R, HIGH);
+  for (int pixel = 0; pixel < NUM_PIX_BACK; pixel++) {
+    strip_left.setPixelColor(pixel, strip_left.Color(65, 255, 3)); 
+    strip_left.show();
+    int pixel_fl = NUM_PIX_BACK + pixel;
+    strip_front.setPixelColor(pixel_fl, strip_front.Color(65, 255, 3)); 
+    strip_front.show();
+    strip_right.setPixelColor(pixel, strip_right.Color(65, 255, 3)); 
+    strip_right.show();
+    int pixel_fr = NUM_PIX_BACK - pixel;
+    strip_front.setPixelColor(pixel_fr, strip_front.Color(65, 255, 3)); 
+    strip_front.show();
+
+    delay(SHORT_DELAY);      
+  }
+  delay(LONG_DELAY);      
+  strip_left.fill(strip_front.Color(0, 0, 0, 0));
+  strip_left.show();
+  strip_front.fill(strip_front.Color(0, 0, 0, 0));
+  strip_front.show();
+  strip_right.fill(strip_front.Color(0, 0, 0, 0));
+  strip_right.show();
+  digitalWrite(PIN_RELAY, LOW);
+  digitalWrite(PIN_LED_L, LOW);
+  digitalWrite(PIN_LED_R, LOW);
 }
 
-
-// Theater-marquee-style chasing lights. Pass in a color (32-bit value,
-// a la strip_front.Color(r,g,b) as mentioned above), and a delay time (in ms)
-// between frames.
+/**************************************************************************
+ * T H E A T R E   C H A S E 
+**************************************************************************/
 void theaterChase(uint32_t color, int wait) {
   for(int a=0; a<10; a++) {  // Repeat 10 times...
     for(int b=0; b<3; b++) { //  'b' counts from 0 to 2...
@@ -177,7 +264,9 @@ void theaterChase(uint32_t color, int wait) {
   }
 }
 
-
+/**************************************************************************
+ * W H I T E   O V E R   R A I N B O W
+**************************************************************************/
 void whiteOverRainbow(int whiteSpeed, int whiteLength) {
 
   if(whiteLength >= strip_front.numPixels()) whiteLength = strip_front.numPixels() - 1;
@@ -218,19 +307,45 @@ void whiteOverRainbow(int whiteSpeed, int whiteLength) {
     }
   }
 }
+/**************************************************************************
+ * B A C K   L I G H T
+**************************************************************************/
+void back_light(bool enabled ) {
+  if (enabled) {
+    
+    for(int j=0; j<256; j++) { // Ramp up from 0 to 255
+      strip_right.fill(strip_right.Color(0, 255, 0, strip_right.gamma8(j)));
+      strip_right.show();
+      strip_left.fill(strip_left.Color(0, 255, 0, strip_left.gamma8(j)));
+      strip_left.show();
+    }
 
-void pulseWhite(uint8_t wait) {
-  for(int j=0; j<256; j++) { // Ramp up from 0 to 255
-    // Fill entire strip with white at gamma-corrected brightness level 'j':
-    strip_front.fill(strip_front.Color(0, 0, 0, strip_front.gamma8(j)));
-    strip_front.show();
-    delay(wait);
+  } else {
+
+    for(int j=255; j>=0; j--) { // Ramp down from 255 to 0
+      strip_right.fill(strip_right.Color(0, 255, 0, strip_right.gamma8(j)));
+      strip_right.show();
+      strip_left.fill(strip_left.Color(0, 255, 0, strip_left.gamma8(j)));
+      strip_left.show();
+    }
   }
+}
 
-  for(int j=255; j>=0; j--) { // Ramp down from 255 to 0
-    strip_front.fill(strip_front.Color(0, 0, 0, strip_front.gamma8(j)));
-    strip_front.show();
-    delay(wait);
+/**************************************************************************
+ * F R O N T  L I G H T
+**************************************************************************/
+void front_light(bool enabled ) {
+  if (enabled) {
+    for(int j=0; j<256; j++) { // Ramp up from 0 to 255
+      strip_front.fill(strip_front.Color(0, 0, 0, strip_front.gamma8(j)));
+      strip_front.show();
+    }
+  } else {
+
+    for(int j=255; j>=0; j--) { // Ramp down from 255 to 0
+      strip_front.fill(strip_front.Color(0, 0, 0, strip_front.gamma8(j)));
+      strip_front.show();
+    }
   }
 }
 
