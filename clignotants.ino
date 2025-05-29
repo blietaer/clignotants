@@ -18,7 +18,7 @@ const byte PIN_WRN_BUT =  5;
 const byte PIN_ARR_BUT =  3; 
 const byte PIN_GAU_BUT =  7;  
 const byte PIN_DRO_BUT =  8;  
-const byte PIN_GAY_BUT =  6;  
+const byte PIN_DIS_BUT =  6;  
 const byte PIN_RED_BUT = 16;  
 
 
@@ -42,7 +42,7 @@ volatile byte status_back_light = 0;
 volatile byte status_left_light = 0;
 volatile byte status_right_light = 0;
 volatile byte status_warn_light = 0;
-volatile byte status_gay_light = 0;
+volatile byte status_dis_light = 0;
 
 /**************************************************************************
  * S E T U P
@@ -60,13 +60,13 @@ void setup() {
   pinMode(PIN_GAU_BUT, INPUT_PULLUP);
   pinMode(PIN_DRO_BUT, INPUT_PULLUP);
   pinMode(PIN_WRN_BUT, INPUT_PULLUP);
-  pinMode(PIN_GAY_BUT, INPUT_PULLUP);
+  pinMode(PIN_DIS_BUT, INPUT_PULLUP);
   pinMode(PIN_RED_BUT, INPUT_PULLUP);
 
-  attachInterrupt(PIN_WRN_BUT, irq_warn, FALLING);
-  attachInterrupt(PIN_GAU_BUT, irq_left, FALLING);
-  attachInterrupt(PIN_DRO_BUT, irq_right, FALLING);
-  attachInterrupt(PIN_GAY_BUT, irq_gay, FALLING);
+  attachInterrupt(PIN_WRN_BUT, irq_warn, CHANGE);
+  attachInterrupt(PIN_GAU_BUT, irq_left, CHANGE);
+  attachInterrupt(PIN_DRO_BUT, irq_right, CHANGE);
+  attachInterrupt(PIN_DIS_BUT, irq_dis, CHANGE);
 
   strip_front.begin();
   strip_left.begin();
@@ -83,8 +83,7 @@ void clear_them_all() {
   status_left_light = 0;
   status_right_light = 0;
   status_warn_light = 0;
-  status_gay_light = 0;
-  status_gay_light = 0;
+  status_dis_light = 0;
   status_front_light = 0;
   status_back_light = 0;
  
@@ -97,6 +96,7 @@ void clear_them_all() {
  * L O O P
 **************************************************************************/
 void loop() {
+  interrupts();
   // F R O N T 
   buttonState = digitalRead(PIN_AVA_BUT);
   if (buttonState == LOW) {
@@ -210,18 +210,19 @@ void irq_right() {
   }
 }
 /**************************************************************************
- * G A Y  I S R 
+ * DI S N E Y  I S R 
 **************************************************************************/
-void irq_gay() {
+void irq_dis() {
   static unsigned long last_interrupt_time = 0;
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > LONG_DELAY)
   {
-    status_gay_light = !status_gay_light;
-    if (status_gay_light) {
-      gay_parade();
-    } else {
+    // status_dis_light = !status_dis_light;
+    if (status_dis_light) {
       clear_them_all;
+    } else {
+     status_dis_light = true; 
+     disney_parade();
     }
   }
 }
@@ -345,32 +346,38 @@ uint32_t Wheel(byte WheelPos) {
 /**************************************************************************
  * G A Y   P A R A D E
 **************************************************************************/
-void gay_parade() {
+void disney_parade() {
   uint16_t i, j;
-
-  for(j=0; j<256; j++) {
-    for(i=0; i< strip_front.numPixels(); i++) {
-      strip_front.setPixelColor(i, Wheel((i*1+j) & 255));
-    }
-    for(i=0; i< strip_left.numPixels(); i++) {
-      strip_left.setPixelColor(i, Wheel((i*1+j) & 255));
-    }
-    for(i=0; i< strip_right.numPixels(); i++) {
-      strip_right.setPixelColor(i, Wheel((i*1+j) & 255));
-    }
-
-    strip_front.show();
-    strip_left.show();
-    strip_right.show();
-    if  (!status_gay_light) {
-      clear_them_all();
-      strip_right.fill(strip_front.Color(0, 0, 0, 0));
+  while(status_dis_light) {
+    for(j=0; j<256; j++) {
+      for(i=0; i< strip_front.numPixels(); i++) {
+        strip_front.setPixelColor(i, Wheel((i*1+j) & 255));
+      }
+      strip_front.show();
+      for(i=0; i< strip_left.numPixels(); i++) {
+        strip_left.setPixelColor(i, Wheel((i*1+j) & 255));
+      }
+      strip_left.show();
+      for(i=0; i< strip_right.numPixels(); i++) {
+        strip_right.setPixelColor(i, Wheel((i*1+j) & 255));
+      }
       strip_right.show();
-      strip_front.clear();
-      return;
+
+      if(status_dis_light) {
+        return;
+      }
+        delay(25);
     }
-    delay(SHORT_DELAY);
   }
+  strip_front.clear();
+  strip_left.clear();
+  strip_right.clear();
+  strip_front.fill(strip_front.Color(0, 0, 0, 0));
+  strip_left.fill(strip_front.Color(0, 0, 0, 0));
+  strip_right.fill(strip_front.Color(0, 0, 0, 0));
+  strip_front.show();
+  strip_left.show();
+  strip_right.show();
 
 }
 /**************************************************************************
